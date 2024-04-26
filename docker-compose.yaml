@@ -1,0 +1,75 @@
+services:
+  # Service pour mysql
+  mysql:
+    image: "bitnami/mysql:latest"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=${MYSQL_DB}
+      - MYSQL_USER=${WORDPRESS_DATABASE_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysqldata:/bitnami/mysql/data
+    networks:
+      - network-back
+
+  # service pour redis
+  redis:
+    image: "bitnami/redis:latest"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - network-back
+
+  # Service pour wordpress
+  app:
+    image: "bitnami/wordpress:latest"
+    deploy:
+      replicas: 2
+    restart: always
+    volumes:
+      - wordpressdata:/bitnami/wordpress
+      # - ./wp-config.php:/bitnami/wordpress/wp-config.php
+    networks:
+      - network-front
+      - network-back
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - WORDPRESS_DATABASE_PASSWORD=wordpress_password
+      - WORDPRESS_DATABASE_HOST=${WORDPRESS_DATABASE_HOST}
+      - WORDPRESS_DATABASE_NAME=${WORDPRESS_DATABASE_NAME}
+      - WORDPRESS_DATABASE_USER=${WORDPRESS_DATABASE_USER}
+      - WORDPRESS_BLOG_NAME=${WORDPRESS_BLOG_NAME}
+      - FORCE_SSL_ADMIN=false
+      - FORCE_SSL_LOGIN=false
+    expose:
+      - 8080
+
+  # Service pour proxy
+  proxy:
+    # L'image Docker a utilisé pour le service
+    image: nginx:latest
+
+    # Monter un fichier du répertoire courant de l'hôte
+    # sur le service
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    # Configurer le port-forwarding entre l'hôte et le service
+    ports:
+      - 8080:80
+    depends_on:
+      - app
+    networks:
+      - network-front
+
+networks:
+  network-front:
+    driver: bridge
+  network-back:
+
+volumes:
+  mysqldata:
+  wordpressdata:
+  redisdata:
